@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<link rel="manifest" href="manifest.json">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulär PWA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            font-size: 1.2rem;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        label, input, select, textarea {
+            width: 100%;
+            margin: 10px 0;
+        }
+        input, select, textarea {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Formulär</h1>
+        <form id="dataForm">
+            <label for="date">Datum:</label>
+            <input type="date" id="date" required>
+
+            <label for="location">Plats:</label>
+            <input type="text" id="location" required>
+            <button type="button" id="getAddressButton">Hämta adress</button>
+
+            <label for="address">Adress:</label>
+            <input type="text" id="address" required>
+
+            <label for="status">Status:</label>
+            <select id="status" required>
+                <option value="Ej påbörjat">Ej påbörjat</option>
+                <option value="Pågående">Pågående</option>
+                <option value="Inhämtat">Inhämtat</option>
+                <option value="Ej utfört">Ej utfört</option>
+            </select>
+
+            <label for="info">Info:</label>
+            <textarea id="info" required></textarea>
+
+            <label for="timeFrom">Tidsspann Från:</label>
+            <input type="datetime-local" id="timeFrom" required>
+            <label for="timeTo">Tidsspann Till:</label>
+            <input type="datetime-local" id="timeTo" required>
+
+            <label for="realTime">Realtid:</label>
+            <input type="datetime-local" id="realTime" required>
+            <label for="systemTime">Systemtid:</label>
+            <input type="datetime-local" id="systemTime" required>
+
+            <label for="timeDiff">Tids differens:</label>
+            <input type="text" id="timeDiff" readonly>
+
+            <label for="cameraCount">Antal kameror:</label>
+            <input type="text" id="cameraCount" placeholder="X exporterade, X totalt" required>
+
+            <label for="oldestRecording">Äldsta inspelningen från: </label>
+            <input type="date" id="oldestRecording" required> <span id="daysDiff">0 dagar</span>
+            
+<br>
+            <label for="originalFormat">Original format:</label>
+            <select id="originalFormat" required>
+                <option value="Ja">Ja</option>
+                <option value="Nej">Nej</option>
+            </select>
+
+            <label for="delivery">Leverans:</label>
+            <input type="text" id="delivery" placeholder="Filip/I:mapp/Nej, arkiverat hos Bildex" required>
+
+            <label for="collectors">Inhämtare:</label>
+            <select id="collectors" multiple required>
+                <option value="Inhämtare 1">Inhämtare 1</option>
+                <option value="Inhämtare 2">Inhämtare 2</option>
+                <option value="Inhämtare 3">Inhämtare 3</option>
+                <option value="Inhämtare 4">Inhämtare 4</option>
+            </select>
+
+            <button type="button" id="copyButton">Kopiera ifyllda fält</button>
+            <button type="submit">Skicka</button>
+        </form>
+    </div>
+
+    <script>
+        // Sätt standardvärden för datum och tid
+        document.addEventListener("DOMContentLoaded", function() {
+            const now = new Date();
+            const formattedDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+            const formattedDateTime = now.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+
+            // Sätt dagens datum i datumfältet
+            document.getElementById('date').value = formattedDate;
+
+            // Sätt aktuell tid i tidsspann och realtid/systemtid
+            document.getElementById('timeFrom').value = formattedDateTime;
+            document.getElementById('timeTo').value = formattedDateTime;
+            document.getElementById('realTime').value = formattedDateTime;
+            document.getElementById('systemTime').value = formattedDateTime;
+
+            // Beräkna datumet för äldsta inspelningen (30 dagar från idag)
+            const oldestRecordingDate = new Date();
+            oldestRecordingDate.setDate(now.getDate() - 30); // 30 dagar tidigare
+            const formattedOldestRecordingDate = oldestRecordingDate.toISOString().split('T')[0]; // YYYY-MM-DD
+            document.getElementById('oldestRecording').value = formattedOldestRecordingDate;
+
+            // Sätt max-datum för äldsta inspelningen till dagens datum
+            document.getElementById('oldestRecording').setAttribute('max', formattedDate);
+        });
+
+        // Beräkna tidsdifferens
+        function calculateTimeDiff() {
+            const realTime = new Date(document.getElementById('realTime').value);
+            const systemTime = new Date(document.getElementById('systemTime').value);
+            const timeDiffOutput = document.getElementById('timeDiff');
+
+            if (isNaN(realTime) || isNaN(systemTime)) {
+                timeDiffOutput.value = 'Ogiltiga datum';
+                return;
+            }
+
+            const diff = Math.abs(realTime - systemTime);
+            const hours = Math.floor(diff / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+
+            timeDiffOutput.value = `${hours} timmar, ${minutes} minuter, ${seconds} sekunder`;
+        }
+
+        // Lägg till eventlyssnare för att beräkna tidsdifferens
+        document.getElementById('realTime').addEventListener('change', calculateTimeDiff);
+        document.getElementById('systemTime').addEventListener('change', calculateTimeDiff);
+
+        // Hämta adress från GPS
+        document.getElementById('getAddressButton').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('location').value = data.display_name;
+                        })
+                        .catch(error => {
+                            console.error('Fel vid hämtning av adress:', error);
+                        });
+                }, function() {
+                    alert('Kunde inte hämta din position.');
+                });
+            } else {
+                alert('Geolokalisering stöds inte av denna webbläsare.');
+            }
+        });
+
+        // Beräkna antalet dagar sedan äldsta inspelningen
+        function calculateDaysDiff() {
+            const oldestRecording = new Date(document.getElementById('oldestRecording').value);
+            const today = new Date();
+            const diffTime = today - oldestRecording;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            document.getElementById('daysDiff').textContent = isNaN(diffDays) ? '0 dagar' : `${diffDays} dagar`;
+        }
+
+       
+        document.getElementById('oldestRecording').addEventListener('change', calculateDaysDiff);
+
+        // Kopiera ifyllda fält
+        document.getElementById('copyButton').addEventListener('click', function() {
+            const fields = [
+                'Datum: ' + document.getElementById('date').value,
+                'Plats: ' + document.getElementById('location').value,
+                'Adress: ' + document.getElementById('address').value,
+                'Status: ' + document.getElementById('status').value,
+                'Info: ' + document.getElementById('info').value,
+                'Tidsspann (Från): ' + document.getElementById('timeFrom').value,
+                'Tidsspann (Till): ' + document.getElementById('timeTo').value,
+                'Realtid: ' + document.getElementById('realTime').value,
+                'Systemtid: ' + document.getElementById('systemTime').value,
+                'Tids differens: ' + document.getElementById('timeDiff').value,
+                'Antal kameror: ' + document.getElementById('cameraCount').value,
+                'Äldsta inspelningen från: ' + document.getElementById('oldestRecording').value,
+                'Original format: ' + document.getElementById('originalFormat').value,
+                'Leverans: ' + document.getElementById('delivery').value,
+                'Inhämtare: ' + Array.from(document.getElementById('collectors').selectedOptions).map(option => option.value).join(', ')
+            ];
+
+            const textToCopy = fields.join('\n');
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = textToCopy;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+            alert('Text kopierad till urklipp!');
+        });
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+            console.log('Service Worker registrerad med scope:', registration.scope);
+        }, function(err) {
+            console.log('Service Worker registrering misslyckades:', err);
+        });
+    });
+}
+
+    </script>
+
+</body>
+</html>
